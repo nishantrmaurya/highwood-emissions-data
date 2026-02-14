@@ -1,18 +1,19 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "tsc && node dist/index.js",
-    "dev": "nodemon src/index.ts",
+    "start": "NODE_ENV=dev tsc && node dist/server.js",
+    "dev": "NODE_ENV=dev nodemon src/server.ts",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Nishant Maurya",
   "license": "ISC",
-  "description": "",
+  "description": "Backend for Highwood Emissions Ingestion & Analytics Engine",
   "dependencies": {
+    "dotenv": "17.3.1",
     "express": "5.2.1"
   },
   "devDependencies": {
