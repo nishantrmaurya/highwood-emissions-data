@@ -1,202 +1,127 @@
 generator client {
   provider = "prisma-client"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// Enums (kept in snake_case names to match existing usage)
-enum operational_status {
-  ACTIVE
-  INACTIVE
-  MAINTENANCE
-  DECOMMISSIONED
-}
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
 
-enum measurement_frequency {
-  HOURLY
-  DAILY
-  WEEKLY
-  MONTHLY
-  ANNUAL
-  AD_HOC
+enum site_status {
+  active
+  inactive
+  maintenance
+  decommissioned
 }
 
 enum compliance_status {
-  COMPLIANT
-  NON_COMPLIANT
-  UNDER_REVIEW
+  within_limit
+  limit_exceeded
+  unknown
 }
 
-enum incident_severity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
+enum emission_unit {
+  kg
+  tonne
+  scf
+  ppm
 }
 
-// Models: Prisma uses PascalCase model names, fields use camelCase
-// All DB table names and column names are mapped to snake_case using @@map and @map
-
-model site_type {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  code        String?  @unique
-  description String?
-  sites       Site[]
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  @@map("site_type")
+enum error_severity {
+  low
+  medium
+  high
+  critical
 }
 
-model monitoring_equipment_type {
-  id          Int                   @id @default(autoincrement())
-  name        String                @unique
-  description String?
-  equipments  monitoring_equipment[]
-  created_at   DateTime              @default(now())
-  updated_at   DateTime              @updatedAt
+//////////////////////////////////////////////////////
+// CORE SITE MODEL
+//////////////////////////////////////////////////////
 
-  @@map("monitoring_equipment_type")
-}
-
-model emission_source_type {
-  id          Int             @id @default(autoincrement())
-  name        String          @unique
-  description String?
-  sources     emission_source[]
-  created_at   DateTime        @default(now())
-  updated_at   DateTime        @updatedAt
-
-  @@map("emission_source_type")
-}
-
-model Regulation {
-  id        Int             @id @default(autoincrement())
-  name      String
-  authority String?
-  details   String?
-  site_regs  site_regulation[]
-  created_at DateTime        @default(now())
-  updated_at DateTime        @updatedAt
-
-  @@map("regulation")
-}
-
-model Site {
-  id                   Int                    @id @default(autoincrement())
-  name                 String                 @unique
-  site_typeId           Int
-  site_type             site_type               @relation(fields: [site_typeId], references: [id])
-  operator_name         String?
-  status               operational_status     @default(ACTIVE)
-  address              String?
-  latitude             Float?
-  longitude            Float?
-  emission_limit        Decimal?               @db.Decimal(16,6)
-  measurement_frequency measurement_frequency  @default(AD_HOC)
-  installation_date     DateTime?
-  maintenance_notes     String?
-  monitoring_equipments monitoring_equipment[]
-  emission_sources      emission_source[]
-  measurements         Measurement[]
-  site_regs             site_regulation[]
-  incident_reports      incident_report[]
-  created_at            DateTime               @default(now())
-  updated_at            DateTime               @updatedAt
+model site {
+  id                        Int               @id @default(autoincrement())
+  site_name                 String
+  site_type                 String
+  status                    site_status       @default(active)
+  latitude                  Decimal?          @db.Decimal(10, 7)
+  longitude                 Decimal?          @db.Decimal(10, 7)
+  emission_limit            Decimal           @db.Decimal(18, 6)
+  total_emissions_to_date   Decimal           @default(0) @db.Decimal(18, 6)
+  metadata                  Json?
+  last_measurement_at       DateTime?
+  rolling_24h_emissions     Decimal?          @db.Decimal(18, 6)
+  rolling_30d_emissions     Decimal?          @db.Decimal(18, 6)
+  measurements              measurement[]
+  ingestion_batches         ingestion_batch[]
+  current_compliance_status compliance_status @default(unknown)
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+  deleted_at                DateTime?
+  error_logs                error_log[]
 
   @@map("site")
 }
 
-model monitoring_equipment {
-  id              Int                   @id @default(autoincrement())
-  site_id          Int
-  site            Site                  @relation(fields: [site_id], references: [id])
-  typeId          Int?
-  type            monitoring_equipment_type? @relation(fields: [typeId], references: [id])
-  model           String?
-  serial          String?
-  installed_at     DateTime?
-  last_calibration DateTime?
-  metadata        Json?
-  measurements    Measurement[]
-  created_at       DateTime              @default(now())
-  updated_at       DateTime              @updatedAt
+//////////////////////////////////////////////////////
+// MEASUREMENTS (RAW TELEMETRY — NEVER DELETE)
+//////////////////////////////////////////////////////
 
-  @@map("monitoring_equipment")
-}
+model measurement {
+  id             Int              @id @default(autoincrement())
+  site_id        Int
+  site           site             @relation(fields: [site_id], references: [id], onDelete: Cascade)
+  batch_id       Int?
+  batch          ingestion_batch? @relation(fields: [batch_id], references: [id])
+  measured_at    DateTime
+  emission_value Decimal          @db.Decimal(18, 6)
+  unit           emission_unit
+  raw_payload    Json?
+  created_at     DateTime         @default(now())
 
-model emission_source {
-  id          Int               @id @default(autoincrement())
-  site_id      Int
-  site        Site              @relation(fields: [site_id], references: [id])
-  typeId      Int?
-  type        emission_source_type? @relation(fields: [typeId], references: [id])
-  name        String
-  description String?
-  component_ref String?
-  created_at   DateTime          @default(now())
-  updated_at   DateTime          @updatedAt
-
-  @@map("emission_source")
-}
-
-model Measurement {
-  id         Int                  @id @default(autoincrement())
-  site_id     Int
-  site       Site                 @relation(fields: [site_id], references: [id])
-  equipment_id Int?
-  equipment  monitoring_equipment? @relation(fields: [equipment_id], references: [id])
-  measured_at DateTime             @default(now())
-  value      Decimal              @db.Decimal(16,6)
-  unit       String
-  note       String?
-  created_at  DateTime             @default(now())
-
+  @@index([site_id])
+  @@index([measured_at])
   @@map("measurement")
 }
 
-model site_regulation {
-  id                 Int               @id @default(autoincrement())
-  site_id             Int
-  site               Site              @relation(fields: [site_id], references: [id])
-  regulation_id       Int
-  regulation         Regulation        @relation(fields: [regulation_id], references: [id])
-  compliance_status   compliance_status
-  last_inspection_date DateTime?
-  next_inspection_date DateTime?
-  notes              String?
-  created_at          DateTime          @default(now())
-  updated_at          DateTime          @updatedAt
+//////////////////////////////////////////////////////
+// IDEMPOTENT INGESTION (CRITICAL FOR FIELD DEVICES)
+//////////////////////////////////////////////////////
 
-  @@unique([site_id, regulation_id])
-  @@map("site_regulation")
+model ingestion_batch {
+  id              Int           @id @default(autoincrement())
+  site_id         Int
+  site            site          @relation(fields: [site_id], references: [id], onDelete: Cascade)
+  client_batch_id String        @unique
+  received_at     DateTime      @default(now())
+  processed       Boolean       @default(false)
+  measurements    measurement[]
+  created_at      DateTime      @default(now())
+
+  @@index([site_id])
+  @@map("ingestion_batch")
 }
 
-model incident_report {
-  id              Int               @id @default(autoincrement())
-  site_id          Int
-  site            Site              @relation(fields: [site_id], references: [id])
-  reported_at      DateTime          @default(now())
-  severity        incident_severity @default(LOW)
-  description     String
-  resolved        Boolean           @default(false)
-  resolution_notes String?
-  created_at       DateTime          @default(now())
-  updated_at       DateTime          @updatedAt
-
-  @@map("incident_report")
-}
+//////////////////////////////////////////////////////
+// ENTERPRISE ERROR OBSERVABILITY
+//////////////////////////////////////////////////////
 
 model error_log {
-  id        Int      @id @default(autoincrement())
-  code      String?
-  message   String
-  context   Json?
-  created_at DateTime @default(now())
+  id         Int            @id @default(autoincrement())
+  service    String?
+  endpoint   String?
+  request_id String?
+  error_code String
+  message    String
+  severity   error_severity @default(medium)
+  context    Json?
+  site_id    Int?
+  site       site?          @relation(fields: [site_id], references: [id])
+  created_at DateTime       @default(now())
 
+  @@index([request_id])
+  @@index([site_id])
   @@map("error_log")
 }
