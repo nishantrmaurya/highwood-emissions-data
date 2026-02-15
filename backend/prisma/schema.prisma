@@ -6,3 +6,197 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// Enums (kept in snake_case names to match existing usage)
+enum operational_status {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DECOMMISSIONED
+}
+
+enum measurement_frequency {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  ANNUAL
+  AD_HOC
+}
+
+enum compliance_status {
+  COMPLIANT
+  NON_COMPLIANT
+  UNDER_REVIEW
+}
+
+enum incident_severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// Models: Prisma uses PascalCase model names, fields use camelCase
+// All DB table names and column names are mapped to snake_case using @@map and @map
+
+model site_type {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  code        String?  @unique
+  description String?
+  sites       Site[]
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@map("site_type")
+}
+
+model monitoring_equipment_type {
+  id          Int                   @id @default(autoincrement())
+  name        String                @unique
+  description String?
+  equipments  monitoring_equipment[]
+  created_at   DateTime              @default(now())
+  updated_at   DateTime              @updatedAt
+
+  @@map("monitoring_equipment_type")
+}
+
+model emission_source_type {
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
+  description String?
+  sources     emission_source[]
+  created_at   DateTime        @default(now())
+  updated_at   DateTime        @updatedAt
+
+  @@map("emission_source_type")
+}
+
+model Regulation {
+  id        Int             @id @default(autoincrement())
+  name      String
+  authority String?
+  details   String?
+  site_regs  site_regulation[]
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+
+  @@map("regulation")
+}
+
+model Site {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @unique
+  site_typeId           Int
+  site_type             site_type               @relation(fields: [site_typeId], references: [id])
+  operator_name         String?
+  status               operational_status     @default(ACTIVE)
+  address              String?
+  latitude             Float?
+  longitude            Float?
+  emission_limit        Decimal?               @db.Decimal(16,6)
+  measurement_frequency measurement_frequency  @default(AD_HOC)
+  installation_date     DateTime?
+  maintenance_notes     String?
+  monitoring_equipments monitoring_equipment[]
+  emission_sources      emission_source[]
+  measurements         Measurement[]
+  site_regs             site_regulation[]
+  incident_reports      incident_report[]
+  created_at            DateTime               @default(now())
+  updated_at            DateTime               @updatedAt
+
+  @@map("site")
+}
+
+model monitoring_equipment {
+  id              Int                   @id @default(autoincrement())
+  site_id          Int
+  site            Site                  @relation(fields: [site_id], references: [id])
+  typeId          Int?
+  type            monitoring_equipment_type? @relation(fields: [typeId], references: [id])
+  model           String?
+  serial          String?
+  installed_at     DateTime?
+  last_calibration DateTime?
+  metadata        Json?
+  measurements    Measurement[]
+  created_at       DateTime              @default(now())
+  updated_at       DateTime              @updatedAt
+
+  @@map("monitoring_equipment")
+}
+
+model emission_source {
+  id          Int               @id @default(autoincrement())
+  site_id      Int
+  site        Site              @relation(fields: [site_id], references: [id])
+  typeId      Int?
+  type        emission_source_type? @relation(fields: [typeId], references: [id])
+  name        String
+  description String?
+  component_ref String?
+  created_at   DateTime          @default(now())
+  updated_at   DateTime          @updatedAt
+
+  @@map("emission_source")
+}
+
+model Measurement {
+  id         Int                  @id @default(autoincrement())
+  site_id     Int
+  site       Site                 @relation(fields: [site_id], references: [id])
+  equipment_id Int?
+  equipment  monitoring_equipment? @relation(fields: [equipment_id], references: [id])
+  measured_at DateTime             @default(now())
+  value      Decimal              @db.Decimal(16,6)
+  unit       String
+  note       String?
+  created_at  DateTime             @default(now())
+
+  @@map("measurement")
+}
+
+model site_regulation {
+  id                 Int               @id @default(autoincrement())
+  site_id             Int
+  site               Site              @relation(fields: [site_id], references: [id])
+  regulation_id       Int
+  regulation         Regulation        @relation(fields: [regulation_id], references: [id])
+  compliance_status   compliance_status
+  last_inspection_date DateTime?
+  next_inspection_date DateTime?
+  notes              String?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  @@unique([site_id, regulation_id])
+  @@map("site_regulation")
+}
+
+model incident_report {
+  id              Int               @id @default(autoincrement())
+  site_id          Int
+  site            Site              @relation(fields: [site_id], references: [id])
+  reported_at      DateTime          @default(now())
+  severity        incident_severity @default(LOW)
+  description     String
+  resolved        Boolean           @default(false)
+  resolution_notes String?
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+
+  @@map("incident_report")
+}
+
+model error_log {
+  id        Int      @id @default(autoincrement())
+  code      String?
+  message   String
+  context   Json?
+  created_at DateTime @default(now())
+
+  @@map("error_log")
+}
