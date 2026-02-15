@@ -1,14 +1,8 @@
 // src/server.ts
-import dotenv from "dotenv";
 import express, { Application, Request, Response } from "express";
+import { loadEnv } from "./utils/loadEnv";
 
-if (!process.env.NODE_ENV) {
-  console.error(
-    "NODE_ENV is not set. Please set it to 'dev', 'prod', or 'test'.",
-  );
-  process.exit(1);
-}
-dotenv.config({ path: `/config/.env.${process.env.NODE_ENV}` });
+loadEnv("/config/.env");
 
 const app: Application = express();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
