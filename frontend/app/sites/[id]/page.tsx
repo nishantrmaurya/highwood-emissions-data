@@ -9,6 +9,7 @@ import SuccessToast from "@/app/components/ui/SuccessToast";
 import { ApiError } from "@/app/lib/api/ApiError";
 import { MeasurementApiService } from "@/app/lib/api/MeasurementApiService";
 import { SiteApiService } from "@/app/lib/api/SiteApiService";
+import { UI_LABELS } from "@/app/lib/constants/labels";
 import { RealtimeClient } from "@/app/lib/socket/RealtimeClient";
 import {
   createMeasurementFormSchema,
@@ -19,6 +20,7 @@ import type { EmissionUnit, Measurement, Site } from "@/app/types/schema";
 const siteApi = new SiteApiService();
 const measurementApi = new MeasurementApiService();
 const realtimeClient = RealtimeClient.getInstance();
+const LABELS = UI_LABELS.siteDetail;
 
 const UNITS: EmissionUnit[] = ["kg", "tonne", "scf", "ppm"];
 
@@ -30,7 +32,9 @@ function formatError(error: unknown): { message: string; details?: string } {
   if (error instanceof ApiError) {
     return {
       message: error.message,
-      details: error.details ? JSON.stringify(error.details, null, 2) : undefined,
+      details: error.details
+        ? JSON.stringify(error.details, null, 2)
+        : undefined,
     };
   }
 
@@ -38,7 +42,7 @@ function formatError(error: unknown): { message: string; details?: string } {
     return { message: error.message };
   }
 
-  return { message: "Unexpected error occurred" };
+  return { message: UI_LABELS.common.unexpectedError };
 }
 
 export default function SiteDetailPage() {
@@ -95,8 +99,8 @@ export default function SiteDetailPage() {
   }, [loadSite, siteId]);
 
   useEffect(() => {
-    const unsubscribeMeasurementCreated =
-      realtimeClient.onMeasurementCreated((payload) => {
+    const unsubscribeMeasurementCreated = realtimeClient.onMeasurementCreated(
+      (payload) => {
         if (payload.site_id !== siteId) {
           return;
         }
@@ -126,7 +130,8 @@ export default function SiteDetailPage() {
         });
 
         loadSite();
-      });
+      },
+    );
 
     return () => {
       unsubscribeMeasurementCreated();
@@ -144,7 +149,11 @@ export default function SiteDetailPage() {
     });
 
     if (!parsed.success) {
-      showError(new Error(parsed.error.issues[0]?.message || "Validation failed"));
+      showError(
+        new Error(
+          parsed.error.issues[0]?.message || UI_LABELS.common.validationFailed,
+        ),
+      );
       return;
     }
 
@@ -169,7 +178,7 @@ export default function SiteDetailPage() {
       setEmissionValue("");
       setUnit("kg");
       setRawPayload("");
-      setSuccessMessage("Measurement added successfully.");
+      setSuccessMessage(LABELS.messages.measurementAdded);
       setSuccessOpen(true);
 
       await loadSite();
@@ -196,9 +205,9 @@ export default function SiteDetailPage() {
 
       <main className="mx-auto max-w-6xl p-8">
         {loading ? (
-          <EmptyState message="Loading site details..." />
+          <EmptyState message={LABELS.placeholders.loadingSiteDetails} />
         ) : !site ? (
-          <EmptyState message="Site not found." />
+          <EmptyState message={LABELS.placeholders.siteNotFound} />
         ) : (
           <>
             <div className="mb-6 flex items-center justify-between gap-4">
@@ -210,67 +219,71 @@ export default function SiteDetailPage() {
                 href="/"
                 className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-800"
               >
-                Back to Dashboard
+                {LABELS.actions.backToDashboard}
               </Link>
             </div>
 
             <section className="mb-8 rounded border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-3 text-lg font-semibold">Site Details</h2>
+              <h2 className="mb-3 text-lg font-semibold">{LABELS.sections.siteDetails}</h2>
               <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                 <p>
-                  <strong>site_name:</strong> {site.site_name}
+                  <strong>{LABELS.headers.siteName}:</strong> {site.site_name}
                 </p>
                 <p>
-                  <strong>site_type:</strong> {site.site_type}
+                  <strong>{LABELS.headers.siteType}:</strong> {site.site_type}
                 </p>
                 <p>
-                  <strong>status:</strong> {site.status}
+                  <strong>{LABELS.headers.status}:</strong> {site.status}
                 </p>
                 <p>
-                  <strong>current_compliance_status:</strong>{" "}
+                  <strong>{LABELS.headers.complianceStatus}:</strong>{" "}
                   {toPrettyLabel(site.current_compliance_status)}
                 </p>
                 <p>
-                  <strong>emission_limit:</strong> {site.emission_limit.toFixed(6)}
+                  <strong>{LABELS.headers.emissionLimit}:</strong>{" "}
+                  {site.emission_limit.toFixed(6)}
                 </p>
                 <p>
-                  <strong>total_emissions_to_date:</strong>{" "}
+                  <strong>{LABELS.headers.totalEmissionsToDate}:</strong>{" "}
                   {site.total_emissions_to_date.toFixed(6)}
                 </p>
                 <p>
-                  <strong>rolling_24h_emissions:</strong>{" "}
-                  {site.rolling_24h_emissions?.toFixed(6) ?? "null"}
+                  <strong>{LABELS.headers.rolling24hEmissions}:</strong>{" "}
+                  {site.rolling_24h_emissions?.toFixed(6) ?? UI_LABELS.common.nullValue}
                 </p>
                 <p>
-                  <strong>rolling_30d_emissions:</strong>{" "}
-                  {site.rolling_30d_emissions?.toFixed(6) ?? "null"}
+                  <strong>{LABELS.headers.rolling30dEmissions}:</strong>{" "}
+                  {site.rolling_30d_emissions?.toFixed(6) ?? UI_LABELS.common.nullValue}
                 </p>
                 <p>
-                  <strong>latitude:</strong> {site.latitude ?? "null"}
+                  <strong>{LABELS.headers.latitude}:</strong>{" "}
+                  {site.latitude ?? UI_LABELS.common.nullValue}
                 </p>
                 <p>
-                  <strong>longitude:</strong> {site.longitude ?? "null"}
+                  <strong>{LABELS.headers.longitude}:</strong>{" "}
+                  {site.longitude ?? UI_LABELS.common.nullValue}
                 </p>
                 <p>
-                  <strong>last_measurement_at:</strong>{" "}
+                  <strong>{LABELS.headers.lastMeasureAt}:</strong>{" "}
                   {site.last_measurement_at
                     ? new Date(site.last_measurement_at).toLocaleString()
-                    : "null"}
+                    : UI_LABELS.common.nullValue}
                 </p>
                 <p>
-                  <strong>deleted_at:</strong> {site.deleted_at ?? "null"}
+                  <strong>{LABELS.headers.deleteAt}:</strong>{" "}
+                  {site.deleted_at ?? UI_LABELS.common.nullValue}
                 </p>
                 <p>
-                  <strong>created_at:</strong>{" "}
+                  <strong>{LABELS.headers.createdAt}:</strong>{" "}
                   {new Date(site.created_at).toLocaleString()}
                 </p>
                 <p>
-                  <strong>updated_at:</strong>{" "}
+                  <strong>{LABELS.headers.updatedAt}:</strong>{" "}
                   {new Date(site.updated_at).toLocaleString()}
                 </p>
               </div>
               <div className="mt-3">
-                <p className="mb-1 text-sm font-medium">metadata</p>
+                <p className="mb-1 text-sm font-medium">{LABELS.headers.metadata}</p>
                 <pre className="overflow-x-auto rounded bg-gray-100 p-3 text-xs">
                   {JSON.stringify(site.metadata, null, 2)}
                 </pre>
@@ -278,12 +291,15 @@ export default function SiteDetailPage() {
             </section>
 
             <section className="mb-8 rounded border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-3 text-lg font-semibold">Add Single Measurement</h2>
+              <h2 className="mb-3 text-lg font-semibold">
+                {LABELS.sections.addSingleMeasurement}
+              </h2>
               <form onSubmit={handleSingleInsert} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-sm font-medium">
-                      measured_at<span className="text-red-500">*</span>
+                      {LABELS.headers.measuredAt}
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="datetime-local"
@@ -295,7 +311,8 @@ export default function SiteDetailPage() {
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">
-                      emission_value<span className="text-red-500">*</span>
+                      {LABELS.headers.emissionValue}
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
@@ -309,7 +326,8 @@ export default function SiteDetailPage() {
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">
-                      unit<span className="text-red-500">*</span>
+                      {LABELS.headers.unit}
+                      <span className="text-red-500">*</span>
                     </label>
                     <select
                       className="w-full rounded border px-3 py-2"
@@ -327,12 +345,12 @@ export default function SiteDetailPage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium">
-                    raw_payload (JSON)
+                    {LABELS.headers.rawPayload}
                   </label>
                   <textarea
                     className="w-full rounded border px-3 py-2"
                     rows={3}
-                    placeholder='{"source":"manual_entry"}'
+                    placeholder={LABELS.placeholders.rawPayload}
                     value={rawPayload}
                     onChange={(e) => setRawPayload(e.target.value)}
                   />
@@ -343,36 +361,34 @@ export default function SiteDetailPage() {
                   className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
                   disabled={submitting}
                 >
-                  {submitting ? "Saving..." : "Add Measurement"}
+                  {submitting ? LABELS.actions.saving : LABELS.actions.addMeasurement}
                 </button>
               </form>
             </section>
 
             <section className="mb-8 rounded border border-dashed border-gray-300 bg-gray-50 p-5">
-              <h2 className="mb-2 text-lg font-semibold">Batch Insert</h2>
+              <h2 className="mb-2 text-lg font-semibold">{LABELS.sections.batchInsert}</h2>
               <p className="text-sm text-gray-700">
-                Batch insert workflow is intentionally deferred. This section is
-                reserved for CSV/JSON bulk upload and idempotent batch processing via
-                ingestion batches.
+                {LABELS.messages.batchInsertDescription}
               </p>
             </section>
 
             <section className="rounded border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-3 text-lg font-semibold">Measurements</h2>
+              <h2 className="mb-3 text-lg font-semibold">{LABELS.sections.measurements}</h2>
               {measurements.length === 0 ? (
-                <EmptyState message="No measurements yet for this site." />
+                <EmptyState message={LABELS.placeholders.noMeasurementsForSite} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full rounded-lg border border-gray-200">
                     <thead>
                       <tr>
-                        <th className="px-4 py-2 text-left">id</th>
-                        <th className="px-4 py-2 text-left">site_id</th>
-                        <th className="px-4 py-2 text-left">batch_id</th>
-                        <th className="px-4 py-2 text-left">measured_at</th>
-                        <th className="px-4 py-2 text-left">emission_value</th>
-                        <th className="px-4 py-2 text-left">unit</th>
-                        <th className="px-4 py-2 text-left">created_at</th>
+                        <th className="px-4 py-2 text-left">{LABELS.headers.id}</th>
+                        <th className="px-4 py-2 text-left">{LABELS.headers.siteId}</th>
+                        <th className="px-4 py-2 text-left">{LABELS.headers.batchId}</th>
+                        <th className="px-4 py-2 text-left">{LABELS.headers.measuredAtTable}</th>
+                        <th className="px-4 py-2 text-left">{LABELS.headers.emissionValueTable}</th>
+                        <th className="px-4 py-2 text-left">{LABELS.headers.unitTable}</th>
+                        <th className="px-4 py-2 text-left">{LABELS.headers.createdAtTable}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -380,7 +396,9 @@ export default function SiteDetailPage() {
                         <tr key={measurement.id}>
                           <td className="px-4 py-2">{measurement.id}</td>
                           <td className="px-4 py-2">{measurement.site_id}</td>
-                          <td className="px-4 py-2">{measurement.batch_id ?? "null"}</td>
+                          <td className="px-4 py-2">
+                            {measurement.batch_id ?? UI_LABELS.common.nullValue}
+                          </td>
                           <td className="px-4 py-2">
                             {new Date(measurement.measured_at).toLocaleString()}
                           </td>

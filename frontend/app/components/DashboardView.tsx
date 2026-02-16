@@ -8,6 +8,7 @@ import SuccessToast from "@/app/components/ui/SuccessToast";
 import { ApiError } from "@/app/lib/api/ApiError";
 import { MeasurementApiService } from "@/app/lib/api/MeasurementApiService";
 import { SiteApiService } from "@/app/lib/api/SiteApiService";
+import { UI_LABELS } from "@/app/lib/constants/labels";
 import { RealtimeClient } from "@/app/lib/socket/RealtimeClient";
 import {
   createMeasurementFormSchema,
@@ -18,6 +19,7 @@ import type { EmissionUnit, Measurement, Site } from "@/app/types/schema";
 const siteApi = new SiteApiService();
 const measurementApi = new MeasurementApiService();
 const realtimeClient = RealtimeClient.getInstance();
+const LABELS = UI_LABELS.dashboard;
 
 const UNITS: EmissionUnit[] = ["kg", "tonne", "scf", "ppm"];
 
@@ -29,7 +31,9 @@ function formatError(error: unknown): { message: string; details?: string } {
   if (error instanceof ApiError) {
     return {
       message: error.message,
-      details: error.details ? JSON.stringify(error.details, null, 2) : undefined,
+      details: error.details
+        ? JSON.stringify(error.details, null, 2)
+        : undefined,
     };
   }
 
@@ -37,7 +41,7 @@ function formatError(error: unknown): { message: string; details?: string } {
     return { message: error.message };
   }
 
-  return { message: "Unexpected error occurred" };
+  return { message: UI_LABELS.common.unexpectedError };
 }
 
 export default function DashboardView() {
@@ -63,6 +67,7 @@ export default function DashboardView() {
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
   const sitesRef = useRef<Site[]>([]);
   const selectedSiteIdRef = useRef<number | null>(null);
 
@@ -125,15 +130,17 @@ export default function DashboardView() {
   useEffect(() => {
     const unsubscribeSiteCreated = realtimeClient.onSiteCreated((payload) => {
       const siteExists = sitesRef.current.some((site) => site.id === payload.id);
+
       if (siteExists) {
         return;
       }
+
       loadSites();
-      openSuccessToast("Site list updated from realtime event.");
+      openSuccessToast(LABELS.messages.siteListUpdatedRealtime);
     });
 
-    const unsubscribeMeasurementCreated =
-      realtimeClient.onMeasurementCreated((payload) => {
+    const unsubscribeMeasurementCreated = realtimeClient.onMeasurementCreated(
+      (payload) => {
         const parentSiteExists = sitesRef.current.some(
           (site) => site.id === payload.site_id,
         );
@@ -143,7 +150,8 @@ export default function DashboardView() {
         }
 
         const isSelectedSite =
-          selectedSiteIdRef.current && payload.site_id === selectedSiteIdRef.current;
+          selectedSiteIdRef.current &&
+          payload.site_id === selectedSiteIdRef.current;
 
         if (isSelectedSite) {
           setSelectedSiteMeasurements((current) => {
@@ -172,13 +180,14 @@ export default function DashboardView() {
         }
 
         loadSites();
-      });
+      },
+    );
 
     return () => {
       unsubscribeSiteCreated();
       unsubscribeMeasurementCreated();
     };
-  }, [loadSites, openSuccessToast, selectedSiteId]);
+  }, [loadSites, openSuccessToast]);
 
   const selectSiteForMeasurement = async (siteId: number) => {
     setSelectedSiteId(siteId);
@@ -196,7 +205,7 @@ export default function DashboardView() {
     event.preventDefault();
 
     if (!selectedSiteId) {
-      openErrorDialog(new Error("Select a site before submitting measurement."));
+      openErrorDialog(new Error(LABELS.messages.selectSiteBeforeSubmit));
       return;
     }
 
@@ -208,7 +217,11 @@ export default function DashboardView() {
     });
 
     if (!parsed.success) {
-      openErrorDialog(new Error(parsed.error.issues[0]?.message || "Validation failed"));
+      openErrorDialog(
+        new Error(
+          parsed.error.issues[0]?.message || UI_LABELS.common.validationFailed,
+        ),
+      );
       return;
     }
 
@@ -231,7 +244,7 @@ export default function DashboardView() {
 
       clearMeasurementForm();
       await Promise.all([loadSites(), loadSiteMeasurements(selectedSiteId)]);
-      openSuccessToast("Measurement saved successfully.");
+      openSuccessToast(LABELS.messages.measurementSaved);
     } catch (error) {
       openErrorDialog(error);
     } finally {
@@ -255,24 +268,24 @@ export default function DashboardView() {
 
       <main className="mx-auto w-full max-w-[1500px] p-4 lg:p-6">
         <section className="mb-8">
-          <h2 className="mb-2 text-lg font-semibold">Sites</h2>
+          <h2 className="mb-2 text-lg font-semibold">{LABELS.sections.sites}</h2>
           {sitesLoading ? (
-            <EmptyState message="Loading sites..." />
+            <EmptyState message={LABELS.emptyStates.loadingSites} />
           ) : sites.length === 0 ? (
-            <EmptyState message="No sites found. Create your first site to begin monitoring." />
+            <EmptyState message={LABELS.emptyStates.noSites} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full table-fixed rounded-lg border border-gray-200 text-sm">
                 <thead className="bg-blue-700">
                   <tr>
-                    <th className="px-2 py-2 text-left text-white">site_name</th>
-                    <th className="px-2 py-2 text-left text-white">site_type</th>
-                    <th className="px-2 py-2 text-left text-white">status</th>
-                    <th className="px-2 py-2 text-left text-white">compliance</th>
-                    <th className="px-2 py-2 text-left text-white">emission_limit</th>
-                    <th className="px-2 py-2 text-left text-white">total_emissions_to_date</th>
-                    <th className="px-2 py-2 text-left text-white">last_measurement_at</th>
-                    <th className="px-2 py-2 text-left text-white">actions</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.siteName}</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.siteType}</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.status}</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.compliance}</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.emissionLimit}</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.totalEmissionsToDate}</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.lastMeasurementAt}</th>
+                    <th className="px-2 py-2 text-left text-white">{LABELS.tableHeaders.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,13 +315,11 @@ export default function DashboardView() {
                         </span>
                       </td>
                       <td className="px-2 py-2">{site.emission_limit.toFixed(3)}</td>
-                      <td className="px-2 py-2">
-                        {site.total_emissions_to_date.toFixed(3)}
-                      </td>
+                      <td className="px-2 py-2">{site.total_emissions_to_date.toFixed(3)}</td>
                       <td className="truncate px-2 py-2">
                         {site.last_measurement_at
                           ? new Date(site.last_measurement_at).toLocaleString()
-                          : "No measurements"}
+                          : UI_LABELS.common.noMeasurements}
                       </td>
                       <td className="px-2 py-2">
                         <button
@@ -316,7 +327,7 @@ export default function DashboardView() {
                           className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
                           onClick={() => selectSiteForMeasurement(site.id)}
                         >
-                          Add Measurement
+                          {LABELS.actions.addMeasurement}
                         </button>
                       </td>
                     </tr>
@@ -328,9 +339,11 @@ export default function DashboardView() {
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-2 text-lg font-semibold">Manual Measurement Ingestion</h2>
+          <h2 className="mb-2 text-lg font-semibold">
+            {LABELS.sections.manualMeasurementIngestion}
+          </h2>
           {!selectedSite ? (
-            <EmptyState message="Select Add Measurement on a site row to open this form." />
+            <EmptyState message={LABELS.emptyStates.selectSiteToOpenForm} />
           ) : (
             <form
               onSubmit={handleSubmitMeasurement}
@@ -338,18 +351,18 @@ export default function DashboardView() {
             >
               <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm">
                 <p>
-                  Selected Site: <strong>{selectedSite.site_name}</strong>
+                  {LABELS.messages.selectedSite}: <strong>{selectedSite.site_name}</strong>
                 </p>
                 <p>
-                  Compliance:{" "}
+                  {LABELS.messages.compliance}:{" "}
                   <strong>{formatCompliance(selectedSite.current_compliance_status)}</strong>
                 </p>
                 <p>
-                  Last Measurement:{" "}
+                  {LABELS.messages.lastMeasurement}:{" "}
                   <strong>
                     {selectedSite.last_measurement_at
                       ? new Date(selectedSite.last_measurement_at).toLocaleString()
-                      : "No measurements"}
+                      : UI_LABELS.common.noMeasurements}
                   </strong>
                 </p>
               </div>
@@ -357,7 +370,7 @@ export default function DashboardView() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block font-medium">
-                    measured_at<span className="text-red-500">*</span>
+                    {LABELS.form.measuredAt}<span className="text-red-500">*</span>
                   </label>
                   <input
                     type="datetime-local"
@@ -369,7 +382,7 @@ export default function DashboardView() {
                 </div>
                 <div>
                   <label className="mb-1 block font-medium">
-                    emission_value<span className="text-red-500">*</span>
+                    {LABELS.form.emissionValue}<span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -385,7 +398,7 @@ export default function DashboardView() {
 
               <div>
                 <label className="mb-1 block font-medium">
-                  unit<span className="text-red-500">*</span>
+                  {LABELS.form.unit}<span className="text-red-500">*</span>
                 </label>
                 <select
                   className="w-full rounded border px-3 py-2"
@@ -401,13 +414,13 @@ export default function DashboardView() {
               </div>
 
               <div>
-                <label className="mb-1 block font-medium">raw_payload (JSON)</label>
+                <label className="mb-1 block font-medium">{LABELS.form.rawPayload}</label>
                 <textarea
                   className="w-full rounded border px-3 py-2"
                   value={rawPayload}
                   onChange={(e) => setRawPayload(e.target.value)}
                   rows={3}
-                  placeholder='{"sensor":"A1","source":"manual"}'
+                  placeholder={LABELS.form.rawPayloadPlaceholder}
                 />
               </div>
 
@@ -417,14 +430,16 @@ export default function DashboardView() {
                   className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
                   disabled={submittingMeasurement}
                 >
-                  {submittingMeasurement ? "Saving..." : "Ingest Measurement"}
+                  {submittingMeasurement
+                    ? LABELS.actions.saving
+                    : LABELS.actions.ingestMeasurement}
                 </button>
                 <button
                   type="button"
                   className="rounded bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300"
                   onClick={() => setSelectedSiteId(null)}
                 >
-                  Cancel
+                  {LABELS.actions.cancel}
                 </button>
               </div>
             </form>
@@ -432,23 +447,25 @@ export default function DashboardView() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-lg font-semibold">Selected Site Measurements</h2>
+          <h2 className="mb-2 text-lg font-semibold">
+            {LABELS.sections.selectedSiteMeasurements}
+          </h2>
           {!selectedSite ? (
-            <EmptyState message="No site selected. Choose a site to view measurements." />
+            <EmptyState message={LABELS.emptyStates.noSiteSelected} />
           ) : selectedMeasurementsLoading ? (
-            <EmptyState message="Loading measurements..." />
+            <EmptyState message={LABELS.emptyStates.loadingMeasurements} />
           ) : selectedSiteMeasurements.length === 0 ? (
-            <EmptyState message="No measurements exist for this site yet." />
+            <EmptyState message={LABELS.emptyStates.noMeasurementsForSite} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full table-fixed rounded-lg border border-gray-200 text-sm">
                 <thead>
                   <tr>
-                    <th className="px-2 py-2 text-left">id</th>
-                    <th className="px-2 py-2 text-left">site_id</th>
-                    <th className="px-2 py-2 text-left">measured_at</th>
-                    <th className="px-2 py-2 text-left">emission_value</th>
-                    <th className="px-2 py-2 text-left">unit</th>
+                    <th className="px-2 py-2 text-left">{LABELS.tableHeaders.id}</th>
+                    <th className="px-2 py-2 text-left">{LABELS.tableHeaders.siteId}</th>
+                    <th className="px-2 py-2 text-left">{LABELS.tableHeaders.measuredAt}</th>
+                    <th className="px-2 py-2 text-left">{LABELS.tableHeaders.emissionValue}</th>
+                    <th className="px-2 py-2 text-left">{LABELS.tableHeaders.unit}</th>
                   </tr>
                 </thead>
                 <tbody>
