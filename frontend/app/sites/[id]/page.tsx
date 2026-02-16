@@ -97,9 +97,35 @@ export default function SiteDetailPage() {
   useEffect(() => {
     const unsubscribeMeasurementCreated =
       realtimeClient.onMeasurementCreated((payload) => {
-        if (payload.site_id === siteId) {
-          loadSite();
+        if (payload.site_id !== siteId) {
+          return;
         }
+
+        setMeasurements((current) => {
+          const exists = current.some(
+            (measurement) => measurement.id === payload.id,
+          );
+
+          if (exists) {
+            return current;
+          }
+
+          return [
+            {
+              id: payload.id,
+              site_id: payload.site_id,
+              batch_id: null,
+              measured_at: payload.measured_at,
+              emission_value: Number(payload.emission_value),
+              unit: payload.unit as EmissionUnit,
+              raw_payload: null,
+              created_at: payload.created_at,
+            },
+            ...current,
+          ];
+        });
+
+        loadSite();
       });
 
     return () => {

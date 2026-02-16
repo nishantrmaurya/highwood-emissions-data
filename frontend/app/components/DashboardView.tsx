@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ErrorDialog from "@/app/components/ui/ErrorDialog";
 import EmptyState from "@/app/components/ui/EmptyState";
 import SuccessToast from "@/app/components/ui/SuccessToast";
@@ -63,11 +63,21 @@ export default function DashboardView() {
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const sitesRef = useRef<Site[]>([]);
+  const selectedSiteIdRef = useRef<number | null>(null);
 
   const selectedSite = useMemo(
     () => sites.find((site) => site.id === selectedSiteId) ?? null,
     [sites, selectedSiteId],
   );
+
+  useEffect(() => {
+    sitesRef.current = sites;
+  }, [sites]);
+
+  useEffect(() => {
+    selectedSiteIdRef.current = selectedSiteId;
+  }, [selectedSiteId]);
 
   const openErrorDialog = useCallback((error: unknown) => {
     const formatted = formatError(error);
@@ -113,24 +123,62 @@ export default function DashboardView() {
   }, [loadSites]);
 
   useEffect(() => {
-    const unsubscribeSiteCreated = realtimeClient.onSiteCreated(() => {
+    const unsubscribeSiteCreated = realtimeClient.onSiteCreated((payload) => {
+      const siteExists = sitesRef.current.some((site) => site.id === payload.id);
+      if (siteExists) {
+        return;
+      }
       loadSites();
       openSuccessToast("Site list updated from realtime event.");
     });
 
     const unsubscribeMeasurementCreated =
       realtimeClient.onMeasurementCreated((payload) => {
-        loadSites();
-        if (selectedSiteId && payload.site_id === selectedSiteId) {
-          loadSiteMeasurements(selectedSiteId);
+        const parentSiteExists = sitesRef.current.some(
+          (site) => site.id === payload.site_id,
+        );
+
+        if (!parentSiteExists) {
+          return;
         }
+
+        const isSelectedSite =
+          selectedSiteIdRef.current && payload.site_id === selectedSiteIdRef.current;
+
+        if (isSelectedSite) {
+          setSelectedSiteMeasurements((current) => {
+            const exists = current.some(
+              (measurement) => measurement.id === payload.id,
+            );
+
+            if (exists) {
+              return current;
+            }
+
+            return [
+              {
+                id: payload.id,
+                site_id: payload.site_id,
+                batch_id: null,
+                measured_at: payload.measured_at,
+                emission_value: Number(payload.emission_value),
+                unit: payload.unit as EmissionUnit,
+                raw_payload: null,
+                created_at: payload.created_at,
+              },
+              ...current,
+            ];
+          });
+        }
+
+        loadSites();
       });
 
     return () => {
       unsubscribeSiteCreated();
       unsubscribeMeasurementCreated();
     };
-  }, [loadSites, loadSiteMeasurements, openSuccessToast, selectedSiteId]);
+  }, [loadSites, openSuccessToast, selectedSiteId]);
 
   const selectSiteForMeasurement = async (siteId: number) => {
     setSelectedSiteId(siteId);
