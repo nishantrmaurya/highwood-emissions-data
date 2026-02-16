@@ -1,31 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useCallback, useState } from "react";
 import ErrorDialog from "@/app/components/ui/ErrorDialog";
 import SuccessToast from "@/app/components/ui/SuccessToast";
-import { ApiError } from "@/app/lib/api/ApiError";
 import { SiteApiService } from "@/app/lib/api/SiteApiService";
+import { UI_LABELS } from "@/app/lib/constants/labels";
+import { formatErrorForDialog } from "@/app/lib/errors/formatErrorForDialog";
 import {
   createSiteFormSchema,
   parseJsonObject,
 } from "@/app/lib/validation/schemas";
 
 const siteApi = new SiteApiService();
-
-function formatError(error: unknown): { message: string; details?: string } {
-  if (error instanceof ApiError) {
-    return {
-      message: error.message,
-      details: error.details ? JSON.stringify(error.details, null, 2) : undefined,
-    };
-  }
-
-  if (error instanceof Error) {
-    return { message: error.message };
-  }
-
-  return { message: "Unexpected error occurred" };
-}
 
 export default function CreateSitePage() {
   const [siteName, setSiteName] = useState("");
@@ -43,23 +29,26 @@ export default function CreateSitePage() {
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  const showError = (error: unknown) => {
-    const formatted = formatError(error);
+  const showError = useCallback((error: unknown) => {
+    const formatted = formatErrorForDialog(
+      error,
+      UI_LABELS.common.unexpectedError,
+    );
     setErrorMessage(formatted.message);
     setErrorDetails(formatted.details);
     setErrorOpen(true);
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setSiteName("");
     setSiteType("");
     setEmissionLimit("");
     setLatitude("");
     setLongitude("");
     setMetadata("");
-  };
+  }, []);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const parsed = createSiteFormSchema.safeParse({
@@ -72,7 +61,11 @@ export default function CreateSitePage() {
     });
 
     if (!parsed.success) {
-      showError(new Error(parsed.error.issues[0]?.message || "Validation failed"));
+      showError(
+        new Error(
+          parsed.error.issues[0]?.message || UI_LABELS.common.validationFailed,
+        ),
+      );
       return;
     }
 
@@ -127,13 +120,14 @@ export default function CreateSitePage() {
         >
           <div>
             <label className="mb-1 block font-medium">
-              site_name<span className="text-red-500">*</span>
+              {UI_LABELS.siteDetail.headers.siteName}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               className="w-full rounded border px-3 py-2"
               value={siteName}
-              onChange={(e) => setSiteName(e.target.value)}
+              onChange={(event) => setSiteName(event.target.value)}
               maxLength={120}
               required
             />
@@ -141,13 +135,14 @@ export default function CreateSitePage() {
 
           <div>
             <label className="mb-1 block font-medium">
-              site_type<span className="text-red-500">*</span>
+              {UI_LABELS.siteDetail.headers.siteType}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               className="w-full rounded border px-3 py-2"
               value={siteType}
-              onChange={(e) => setSiteType(e.target.value)}
+              onChange={(event) => setSiteType(event.target.value)}
               maxLength={80}
               placeholder="well_pad, compressor_station, plant..."
               required
@@ -156,13 +151,14 @@ export default function CreateSitePage() {
 
           <div>
             <label className="mb-1 block font-medium">
-              emission_limit<span className="text-red-500">*</span>
+              {UI_LABELS.siteDetail.headers.emissionLimit}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
               className="w-full rounded border px-3 py-2"
               value={emissionLimit}
-              onChange={(e) => setEmissionLimit(e.target.value)}
+              onChange={(event) => setEmissionLimit(event.target.value)}
               required
               min={0.000001}
               step="0.000001"
@@ -171,12 +167,14 @@ export default function CreateSitePage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block font-medium">latitude</label>
+              <label className="mb-1 block font-medium">
+                {UI_LABELS.siteDetail.headers.latitude}
+              </label>
               <input
                 type="number"
                 className="w-full rounded border px-3 py-2"
                 value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
+                onChange={(event) => setLatitude(event.target.value)}
                 step="0.0000001"
                 min={-90}
                 max={90}
@@ -184,12 +182,14 @@ export default function CreateSitePage() {
               />
             </div>
             <div>
-              <label className="mb-1 block font-medium">longitude</label>
+              <label className="mb-1 block font-medium">
+                {UI_LABELS.siteDetail.headers.longitude}
+              </label>
               <input
                 type="number"
                 className="w-full rounded border px-3 py-2"
                 value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
+                onChange={(event) => setLongitude(event.target.value)}
                 step="0.0000001"
                 min={-180}
                 max={180}
@@ -199,11 +199,13 @@ export default function CreateSitePage() {
           </div>
 
           <div>
-            <label className="mb-1 block font-medium">metadata (JSON object)</label>
+            <label className="mb-1 block font-medium">
+              {UI_LABELS.siteDetail.headers.metadata}
+            </label>
             <textarea
               className="w-full rounded border px-3 py-2"
               value={metadata}
-              onChange={(e) => setMetadata(e.target.value)}
+              onChange={(event) => setMetadata(event.target.value)}
               rows={4}
               placeholder='{"owner":"Ops Team North"}'
             />
