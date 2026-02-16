@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { createSiteSchema } from "../models/site.schema.ts";
-import { SiteService } from "../services/siteService.ts";
+import { createSiteSchema } from "../models/site.schema.js";
+import { SiteService } from "../services/siteService.js";
 
 export async function createSite(
   req: Request,

@@ -1,5 +1,5 @@
-import { prismaClient } from "../config/prisma/prismaClient.ts";
-import { CreateSiteInput } from "../models/site.schema.ts";
+import { prismaClient } from "../config/prisma/prismaClient.js";
+import { CreateSiteInput } from "../models/site.schema.js";
 
 export class SiteService {
   static async createSite(data: CreateSiteInput) {
