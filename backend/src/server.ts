@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { initSocketServer } from "./socket/socketServer.js";
 
-loadEnv("/config/.env");
+loadEnv();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
