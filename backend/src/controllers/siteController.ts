@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { createSiteSchema } from "../models/site.schema.js";
 import { SiteService } from "../services/siteService.js";
+import { emitSocketUpdate } from "../socket/socketServer.js";
 
 // Get site metrics (analytics)
 export async function getSiteMetrics(
@@ -45,6 +46,12 @@ export async function createSite(
       });
     }
     const site = await SiteService.createSite(parsed.data);
+    emitSocketUpdate("site.created", {
+      id: site.id,
+      site_name: site.site_name,
+      site_type: site.site_type,
+      created_at: site.created_at,
+    });
     res.status(201).json({ status: "success", data: site });
   } catch (err) {
     next(err);

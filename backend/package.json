@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "NODE_ENV=dev node dist/server.js",
-    "dev": "NODE_ENV=dev tsc --watch & nodemon dist/server.js --watch dist",
+    "dev": "NODE_ENV=dev sh -c 'tsc --watch & until [ -f dist/server.js ]; do sleep 0.2; done; sleep 1; nodemon'",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prisma:generate": "NODE_ENV=dev && prisma generate",
@@ -24,6 +24,7 @@
     "dotenv": "17.3.1",
     "express": "5.2.1",
     "pg": "8.18.0",
+    "socket.io": "4.8.3",
     "zod": "4.3.6"
   },
   "devDependencies": {

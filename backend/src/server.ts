@@ -6,6 +6,8 @@ import fs from "fs";
 import path from "path";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { fileURLToPath } from "url";
+import { createServer } from "http";
+import { initSocketServer } from "./socket/socketServer.js";
 
 loadEnv("/config/.env");
 
@@ -33,8 +35,6 @@ async function loadRouters(dir: string) {
     }
   }
 }
-loadRouters(routesPath);
-
 app.get("/health", (req: Request, res: Response) => {
   res
     .status(200)
@@ -43,6 +43,18 @@ app.get("/health", (req: Request, res: Response) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+async function startServer() {
+  await loadRouters(routesPath);
+
+  const httpServer = createServer(app);
+  initSocketServer(httpServer);
+
+  httpServer.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error("Failed to start server", error);
+  process.exit(1);
 });
