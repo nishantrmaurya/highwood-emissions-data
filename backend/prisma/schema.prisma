@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/config/prisma/generated"
+  moduleFormat  = "esm"
 }
 
 datasource db {
