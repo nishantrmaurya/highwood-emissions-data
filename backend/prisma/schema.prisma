@@ -85,6 +85,7 @@ model measurement {
 
   @@index([site_id])
   @@index([measured_at])
+  @@index([site_id, measured_at(sort: Desc)])
   @@map("measurement")
 }
 

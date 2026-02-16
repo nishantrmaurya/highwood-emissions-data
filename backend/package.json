@@ -10,7 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "prisma:generate": "NODE_ENV=dev && prisma generate",
     "prisma:migrate:dev": "NODE_ENV=dev && prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:migrate:deploy": "NODE_ENV=dev && prisma migrate deploy",
     "prisma:migrate:reset": "NODE_ENV=dev && prisma migrate reset --force",
     "prisma:migrate:status": "prisma migrate status --schema=./prisma/schema.prisma"
   },
