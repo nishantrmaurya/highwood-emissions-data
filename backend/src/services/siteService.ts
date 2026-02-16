@@ -15,4 +15,17 @@ export class SiteService {
       },
     });
   }
+
+  static async getSiteMetrics(siteId: number) {
+    // Fetch site with compliance status and summary fields
+    const site = await prismaClient.site.findUnique({
+      where: { id: siteId },
+    });
+
+    if (!site) {
+      return null;
+    }
+
+    return site;
+  }
 }
