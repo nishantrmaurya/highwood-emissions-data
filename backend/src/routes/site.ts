@@ -1,10 +1,10 @@
 import { Router } from "express";
 import {
-  addMeasurement,
   createSite,
   getAllSites,
   getSiteMetrics,
 } from "../controllers/siteController.js";
+import { addMeasurement } from "../controllers/measurementController.js";
 import {
   createMeasurementSchema,
   createSiteSchema,
