@@ -22,13 +22,6 @@ export class MeasurementService {
         return null;
       }
 
-      trx.site.update({
-        where: { id: siteId },
-        data: {
-          last_measurement_at: data.measured_at,
-        },
-      });
-
       return trx.measurement.create({
         data: {
           site_id: siteId,
