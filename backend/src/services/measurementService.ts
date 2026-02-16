@@ -12,23 +12,32 @@ export class MeasurementService {
   }
 
   static async addMeasurement(siteId: number, data: CreateMeasurementInput) {
-    const site = await prismaClient.site.findUnique({
-      where: { id: siteId },
-      select: { id: true },
-    });
+    return prismaClient.$transaction(async (trx) => {
+      const site = await trx.site.findUnique({
+        where: { id: siteId },
+        select: { id: true },
+      });
 
-    if (!site) {
-      return null;
-    }
+      if (!site) {
+        return null;
+      }
 
-    return prismaClient.measurement.create({
-      data: {
-        site_id: siteId,
-        measured_at: data.measured_at,
-        emission_value: data.emission_value,
-        unit: data.unit,
-        raw_payload: data.raw_payload,
-      },
+      trx.site.update({
+        where: { id: siteId },
+        data: {
+          last_measurement_at: data.measured_at,
+        },
+      });
+
+      return trx.measurement.create({
+        data: {
+          site_id: siteId,
+          measured_at: data.measured_at,
+          emission_value: data.emission_value,
+          unit: data.unit,
+          raw_payload: data.raw_payload,
+        },
+      });
     });
   }
 }
