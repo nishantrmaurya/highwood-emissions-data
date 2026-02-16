@@ -1,7 +1,19 @@
 import { Request, Response, NextFunction } from "express";
-import { createSiteSchema } from "../models/site.schema.js";
 import { SiteService } from "../services/siteService.js";
 import { emitSocketUpdate } from "../socket/socketServer.js";
+
+export async function getAllSites(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const sites = await SiteService.getAllSites();
+    res.json({ status: "success", data: sites });
+  } catch (err) {
+    next(err);
+  }
+}
 
 // Get site metrics (analytics)
 export async function getSiteMetrics(
@@ -37,15 +49,7 @@ export async function createSite(
   next: NextFunction,
 ) {
   try {
-    const parsed = createSiteSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return next({
-        statusCode: 400,
-        message: "Validation error",
-        details: parsed.error.issues,
-      });
-    }
-    const site = await SiteService.createSite(parsed.data);
+    const site = await SiteService.createSite(req.body);
     emitSocketUpdate("site.created", {
       id: site.id,
       site_name: site.site_name,
@@ -53,6 +57,43 @@ export async function createSite(
       created_at: site.created_at,
     });
     res.status(201).json({ status: "success", data: site });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function addMeasurement(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const siteId = Number(req.params.id);
+    if (isNaN(siteId)) {
+      return next({
+        statusCode: 400,
+        message: "Invalid site id",
+      });
+    }
+
+    const measurement = await SiteService.addMeasurement(siteId, req.body);
+    if (!measurement) {
+      return next({
+        statusCode: 404,
+        message: "Site not found",
+      });
+    }
+
+    emitSocketUpdate("measurement.created", {
+      id: measurement.id,
+      site_id: measurement.site_id,
+      measured_at: measurement.measured_at,
+      emission_value: measurement.emission_value,
+      unit: measurement.unit,
+      created_at: measurement.created_at,
+    });
+
+    res.status(201).json({ status: "success", data: measurement });
   } catch (err) {
     next(err);
   }

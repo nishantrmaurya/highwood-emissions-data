@@ -1,11 +1,29 @@
 import { Router } from "express";
-import { createSite, getSiteMetrics } from "../controllers/siteController.js";
+import {
+  addMeasurement,
+  createSite,
+  getAllSites,
+  getSiteMetrics,
+} from "../controllers/siteController.js";
+import {
+  createMeasurementSchema,
+  createSiteSchema,
+} from "../models/site.schema.js";
+import { validateBody } from "../middleware/validateRequest.js";
 
 const router = Router();
+const SITE_ROUTE = "/site";
 
-// Analytics endpoint for site metrics
-router.get("/sites/:id/metrics", getSiteMetrics);
+router.get(SITE_ROUTE, getAllSites);
 
-router.post("/sites", createSite);
+router.get(`${SITE_ROUTE}/:id/metrics`, getSiteMetrics);
+
+router.post(SITE_ROUTE, validateBody(createSiteSchema), createSite);
+
+router.post(
+  `${SITE_ROUTE}/:id/measurements`,
+  validateBody(createMeasurementSchema),
+  addMeasurement,
+);
 
 export default router;
