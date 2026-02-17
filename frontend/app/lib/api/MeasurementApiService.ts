@@ -40,7 +40,7 @@ export class MeasurementApiService extends ApiClient {
     payload: CreateMeasurementPayload,
   ): Promise<Measurement> {
     const created = await this.post<Measurement>(
-      `/site/${siteId}/measurements`,
+      `/sites/${siteId}/measurements`,
       payload,
     );
 

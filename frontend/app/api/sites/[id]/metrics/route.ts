@@ -5,5 +5,5 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-  return proxyBackend(`/site/${id}/metrics`, { method: "GET" });
+  return proxyBackend(`/sites/${id}/metrics`, { method: "GET" });
 }

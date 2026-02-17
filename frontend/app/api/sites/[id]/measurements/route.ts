@@ -8,7 +8,7 @@ export async function POST(
   const { id } = await context.params;
   const body = await request.json();
 
-  return proxyBackend(`/site/${id}/measurements`, {
+  return proxyBackend(`/sites/${id}/measurements`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

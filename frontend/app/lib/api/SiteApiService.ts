@@ -23,12 +23,14 @@ export interface CreateSitePayload {
 
 export class SiteApiService extends ApiClient {
   async getSites(): Promise<Site[]> {
-    const records = await this.get<Site[]>("/site");
+    const records = await this.get<Site[]>("/sites");
     return records.map((record) => SiteModel.fromApi(record));
   }
 
   async getSiteMetrics(siteId: number): Promise<SiteMetrics> {
-    const record = await this.get<SiteMetricsApiResponse>(`/site/${siteId}/metrics`);
+    const record = await this.get<SiteMetricsApiResponse>(
+      `/sites/${siteId}/metrics`,
+    );
 
     return {
       site: SiteModel.fromApi(record),
@@ -39,7 +41,7 @@ export class SiteApiService extends ApiClient {
   }
 
   async createSite(payload: CreateSitePayload): Promise<Site> {
-    const created = await this.post<Site>("/site", payload);
+    const created = await this.post<Site>("/sites", payload);
     return SiteModel.fromApi(created);
   }
 }

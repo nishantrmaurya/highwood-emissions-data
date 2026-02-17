@@ -12,7 +12,7 @@ import {
 import { validateBody } from "../middleware/validateRequest.js";
 
 const router = Router();
-const SITE_ROUTE = "/site";
+const SITE_ROUTE = "/sites";
 
 router.get(SITE_ROUTE, getAllSites);
 
