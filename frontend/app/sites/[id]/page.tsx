@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
+import BatchInsertSection from "@/app/components/site-detail/BatchInsertSection";
 import MeasurementsSection from "@/app/components/site-detail/MeasurementsSection";
 import SingleMeasurementSection from "@/app/components/site-detail/SingleMeasurementSection";
 import SiteDetailsSection from "@/app/components/site-detail/SiteDetailsSection";
@@ -10,11 +11,15 @@ import EmptyState from "@/app/components/ui/EmptyState";
 import ErrorDialog from "@/app/components/ui/ErrorDialog";
 import SuccessToast from "@/app/components/ui/SuccessToast";
 import { ApiError } from "@/app/lib/api/ApiError";
-import { MeasurementApiService } from "@/app/lib/api/MeasurementApiService";
+import {
+  MeasurementApiService,
+  type IngestBatchPayload,
+} from "@/app/lib/api/MeasurementApiService";
 import { SiteApiService } from "@/app/lib/api/SiteApiService";
 import { UI_LABELS } from "@/app/lib/constants/labels";
 import { formatErrorForDialog } from "@/app/lib/errors/formatErrorForDialog";
 import { RealtimeClient } from "@/app/lib/socket/RealtimeClient";
+import { generateFakeMeasurements } from "@/app/lib/utils/generateFakeMeasurements";
 import {
   createMeasurementFormSchema,
   parseJsonObject,
@@ -25,6 +30,8 @@ const siteApi = new SiteApiService();
 const measurementApi = new MeasurementApiService();
 const realtimeClient = RealtimeClient.getInstance();
 const LABELS = UI_LABELS.siteDetail;
+const MIN_BATCH_COUNT = 1;
+const MAX_BATCH_COUNT = 100;
 
 export default function SiteDetailPage() {
   const params = useParams<{ id: string }>();
@@ -39,6 +46,11 @@ export default function SiteDetailPage() {
   const [unit, setUnit] = useState<EmissionUnit>("kg");
   const [rawPayload, setRawPayload] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [batchCount, setBatchCount] = useState("10");
+  const [submittingBatch, setSubmittingBatch] = useState(false);
+  const [retryBatchPayload, setRetryBatchPayload] = useState<IngestBatchPayload | null>(
+    null,
+  );
 
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -173,6 +185,58 @@ export default function SiteDetailPage() {
     }
   };
 
+  const ingestBatch = useCallback(
+    async (payload: IngestBatchPayload) => {
+      try {
+        setSubmittingBatch(true);
+        const result = await measurementApi.ingestBatch(payload);
+        setRetryBatchPayload(null);
+        setSuccessMessage(
+          result.duplicate_request
+            ? LABELS.messages.batchInsertDuplicate
+            : LABELS.messages.batchInsertSuccess,
+        );
+        setSuccessOpen(true);
+        await loadSite();
+      } catch (error) {
+        setRetryBatchPayload(payload);
+        showError(error);
+      } finally {
+        setSubmittingBatch(false);
+      }
+    },
+    [loadSite, showError],
+  );
+
+  const handleBatchInsert = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const count = Number(batchCount);
+    const isValidCount =
+      Number.isInteger(count) && count >= MIN_BATCH_COUNT && count <= MAX_BATCH_COUNT;
+
+    if (!isValidCount) {
+      showError(new Error(LABELS.errors.batchCountRange));
+      return;
+    }
+
+    const payload: IngestBatchPayload = {
+      site_id: siteId,
+      client_batch_id: crypto.randomUUID(),
+      measurements: generateFakeMeasurements(count),
+    };
+
+    await ingestBatch(payload);
+  };
+
+  const handleRetryBatchInsert = async () => {
+    if (!retryBatchPayload) {
+      return;
+    }
+
+    await ingestBatch(retryBatchPayload);
+  };
+
   return (
     <>
       <SuccessToast
@@ -221,14 +285,14 @@ export default function SiteDetailPage() {
               onSubmit={handleSingleInsert}
             />
 
-            <section className="mb-8 rounded border border-dashed border-gray-300 bg-gray-50 p-5">
-              <h2 className="mb-2 text-lg font-semibold">
-                {LABELS.sections.batchInsert}
-              </h2>
-              <p className="text-sm text-gray-700">
-                {LABELS.messages.batchInsertDescription}
-              </p>
-            </section>
+            <BatchInsertSection
+              batchCount={batchCount}
+              submitting={submittingBatch}
+              canRetry={Boolean(retryBatchPayload)}
+              onBatchCountChange={setBatchCount}
+              onSubmit={handleBatchInsert}
+              onRetry={handleRetryBatchInsert}
+            />
 
             <MeasurementsSection measurements={measurements} />
           </>

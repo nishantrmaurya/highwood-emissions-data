@@ -61,6 +61,8 @@ export const UI_LABELS = {
     actions: {
       backToDashboard: "Back to Dashboard",
       addMeasurement: "Add Measurement",
+      batchInsert: "Batch Insert",
+      retryBatchInsert: "Retry Batch Insert",
       saving: "Saving...",
     },
     sections: {
@@ -102,11 +104,19 @@ export const UI_LABELS = {
       siteNotFound: "Site not found.",
       noMeasurementsForSite: "No measurements yet for this site.",
       rawPayload: '{"source":"manual_entry"}',
+      batchCount: "Enter batch size (1-100)",
     },
     messages: {
       measurementAdded: "Measurement added successfully.",
       batchInsertDescription:
-        "Batch insert workflow is intentionally deferred. This section is reserved for CSV/JSON bulk upload and idempotent batch processing via ingestion batches.",
+        "Generate fake telemetry via faker.js and ingest it as one idempotent batch. Retry uses the same client_batch_id to avoid duplicates.",
+      batchInsertSuccess:
+        "Batch ingestion completed successfully.",
+      batchInsertDuplicate:
+        "Batch was already processed earlier (duplicate retry detected).",
+    },
+    errors: {
+      batchCountRange: "batch_count must be an integer between 1 and 100",
     },
   },
 } as const;

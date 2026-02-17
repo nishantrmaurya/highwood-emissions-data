@@ -101,13 +101,21 @@ export default function SitesTableSection({
                       : UI_LABELS.common.noMeasurements}
                   </td>
                   <td className="px-2 py-2">
-                    <button
-                      type="button"
-                      className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
-                      onClick={() => onAddMeasurement(site.id)}
-                    >
-                      {LABELS.actions.addMeasurement}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+                        onClick={() => onAddMeasurement(site.id)}
+                      >
+                        {LABELS.actions.addMeasurement}
+                      </button>
+                      <Link
+                        href={`/sites/${site.id}#batch-insert`}
+                        className="rounded bg-gray-700 px-3 py-1 text-sm text-white hover:bg-gray-800"
+                      >
+                        {UI_LABELS.siteDetail.actions.batchInsert}
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
