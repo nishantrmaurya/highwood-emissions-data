@@ -8,6 +8,7 @@ import type {
   BatchIngestionPayload,
   IngestBatchResult,
 } from "./measurement.types.js";
+import { Decimal } from "@prisma/client/runtime/client";
 
 export type { IngestBatchResult } from "./measurement.types.js";
 
@@ -41,6 +42,7 @@ export class MeasurementService {
           unit: data.unit,
           raw_payload: data.raw_payload,
         },
+        include: { site: true },
       });
     });
   }
@@ -191,11 +193,7 @@ export class MeasurementService {
         : trx.measurement.count({ where: { batch_id: batchId } }),
       trx.site.findUnique({
         where: { id: siteId },
-        select: {
-          total_emissions_to_date: true,
-          last_measurement_at: true,
-          current_compliance_status: true,
-        },
+        include: { measurements: { orderBy: { measured_at: "desc" } } },
       }),
     ]);
 
@@ -212,6 +210,10 @@ export class MeasurementService {
       total_emissions_to_date: site.total_emissions_to_date,
       last_measurement_at: site.last_measurement_at,
       current_compliance_status: site.current_compliance_status,
+      measurements: site.measurements.map((m) => ({
+        ...m,
+        emission_value: Number(m.emission_value) as unknown as Decimal,
+      })),
     };
   }
 

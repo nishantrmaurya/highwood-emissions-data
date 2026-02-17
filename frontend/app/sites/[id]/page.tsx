@@ -33,6 +33,22 @@ const LABELS = UI_LABELS.siteDetail;
 const MIN_BATCH_COUNT = 1;
 const MAX_BATCH_COUNT = 100;
 
+type SiteDetailFormState = {
+  measuredAt: string;
+  emissionValue: string;
+  unit: EmissionUnit;
+  rawPayload: string;
+  batchCount: string;
+};
+
+const initialFormState: SiteDetailFormState = {
+  measuredAt: "",
+  emissionValue: "",
+  unit: "kg",
+  rawPayload: "",
+  batchCount: "10",
+};
+
 export default function SiteDetailPage() {
   const params = useParams<{ id: string }>();
   const siteId = Number(params.id);
@@ -41,16 +57,11 @@ export default function SiteDetailPage() {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [measuredAt, setMeasuredAt] = useState("");
-  const [emissionValue, setEmissionValue] = useState("");
-  const [unit, setUnit] = useState<EmissionUnit>("kg");
-  const [rawPayload, setRawPayload] = useState("");
+  const [form, setForm] = useState<SiteDetailFormState>(initialFormState);
   const [submitting, setSubmitting] = useState(false);
-  const [batchCount, setBatchCount] = useState("10");
   const [submittingBatch, setSubmittingBatch] = useState(false);
-  const [retryBatchPayload, setRetryBatchPayload] = useState<IngestBatchPayload | null>(
-    null,
-  );
+  const [retryBatchPayload, setRetryBatchPayload] =
+    useState<IngestBatchPayload | null>(null);
 
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -58,6 +69,16 @@ export default function SiteDetailPage() {
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  const setFormField = useCallback(
+    <K extends keyof SiteDetailFormState>(
+      field: K,
+      value: SiteDetailFormState[K],
+    ) => {
+      setForm((previous) => ({ ...previous, [field]: value }));
+    },
+    [],
+  );
 
   const showError = useCallback((error: unknown) => {
     const formatted = formatErrorForDialog(error);
@@ -122,23 +143,71 @@ export default function SiteDetailPage() {
           ];
         });
 
-        loadSite();
+        setSite((current) => {
+          if (!current || current.id !== payload.site_id) {
+            return current;
+          }
+
+          const emissionValue = Number(payload.emission_value);
+          const emissionDelta = Number.isFinite(emissionValue)
+            ? emissionValue
+            : 0;
+
+          return {
+            ...current,
+            total_emissions_to_date:
+              current.total_emissions_to_date + emissionDelta,
+            last_measurement_at: payload.site.last_measurement_at,
+          };
+        });
       },
     );
 
     return () => {
       unsubscribeMeasurementCreated();
     };
-  }, [loadSite, siteId]);
+  }, [siteId]);
+
+  useEffect(() => {
+    const unsubscribeMeasurementBatchIngested =
+      realtimeClient.onMeasurementBatchIngested((payload) => {
+        if (payload.site_id !== siteId) {
+          return;
+        }
+
+        setSite((current) => {
+          if (current) {
+            const totalEmissionsToDate = Number(payload.total_emissions_to_date);
+
+            return {
+              ...current,
+              total_emissions_to_date: Number.isFinite(totalEmissionsToDate)
+                ? totalEmissionsToDate
+                : current.total_emissions_to_date,
+              last_measurement_at: payload.last_measurement_at,
+            };
+          }
+          return current;
+        });
+
+        if (payload.measurements) {
+          setMeasurements(payload.measurements);
+        }
+      });
+
+    return () => {
+      unsubscribeMeasurementBatchIngested();
+    };
+  }, [siteId]);
 
   const handleSingleInsert = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const parsed = createMeasurementFormSchema.safeParse({
-      measured_at: measuredAt,
-      emission_value: emissionValue,
-      unit,
-      raw_payload: rawPayload,
+      measured_at: form.measuredAt,
+      emission_value: form.emissionValue,
+      unit: form.unit,
+      raw_payload: form.rawPayload,
     });
 
     if (!parsed.success) {
@@ -170,14 +239,15 @@ export default function SiteDetailPage() {
         raw_payload: parsedRawPayload,
       });
 
-      setMeasuredAt("");
-      setEmissionValue("");
-      setUnit("kg");
-      setRawPayload("");
+      setForm((previous) => ({
+        ...previous,
+        measuredAt: initialFormState.measuredAt,
+        emissionValue: initialFormState.emissionValue,
+        unit: initialFormState.unit,
+        rawPayload: initialFormState.rawPayload,
+      }));
       setSuccessMessage(LABELS.messages.measurementAdded);
       setSuccessOpen(true);
-
-      await loadSite();
     } catch (error) {
       showError(error);
     } finally {
@@ -197,7 +267,6 @@ export default function SiteDetailPage() {
             : LABELS.messages.batchInsertSuccess,
         );
         setSuccessOpen(true);
-        await loadSite();
       } catch (error) {
         setRetryBatchPayload(payload);
         showError(error);
@@ -205,15 +274,17 @@ export default function SiteDetailPage() {
         setSubmittingBatch(false);
       }
     },
-    [loadSite, showError],
+    [showError],
   );
 
   const handleBatchInsert = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const count = Number(batchCount);
+    const count = Number(form.batchCount);
     const isValidCount =
-      Number.isInteger(count) && count >= MIN_BATCH_COUNT && count <= MAX_BATCH_COUNT;
+      Number.isInteger(count) &&
+      count >= MIN_BATCH_COUNT &&
+      count <= MAX_BATCH_COUNT;
 
     if (!isValidCount) {
       showError(new Error(LABELS.errors.batchCountRange));
@@ -273,23 +344,25 @@ export default function SiteDetailPage() {
 
             <SiteDetailsSection site={site} />
             <SingleMeasurementSection
-              measuredAt={measuredAt}
-              emissionValue={emissionValue}
-              unit={unit}
-              rawPayload={rawPayload}
+              measuredAt={form.measuredAt}
+              emissionValue={form.emissionValue}
+              unit={form.unit}
+              rawPayload={form.rawPayload}
               submitting={submitting}
-              onMeasuredAtChange={setMeasuredAt}
-              onEmissionValueChange={setEmissionValue}
-              onUnitChange={setUnit}
-              onRawPayloadChange={setRawPayload}
+              onMeasuredAtChange={(value) => setFormField("measuredAt", value)}
+              onEmissionValueChange={(value) =>
+                setFormField("emissionValue", value)
+              }
+              onUnitChange={(value) => setFormField("unit", value)}
+              onRawPayloadChange={(value) => setFormField("rawPayload", value)}
               onSubmit={handleSingleInsert}
             />
 
             <BatchInsertSection
-              batchCount={batchCount}
+              batchCount={form.batchCount}
               submitting={submittingBatch}
               canRetry={Boolean(retryBatchPayload)}
-              onBatchCountChange={setBatchCount}
+              onBatchCountChange={(value) => setFormField("batchCount", value)}
               onSubmit={handleBatchInsert}
               onRetry={handleRetryBatchInsert}
             />

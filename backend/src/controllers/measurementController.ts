@@ -29,7 +29,10 @@ export async function addMeasurement(
       });
     }
 
-    const measurement = await MeasurementService.addMeasurement(siteId, req.body);
+    const measurement = await MeasurementService.addMeasurement(
+      siteId,
+      req.body,
+    );
     if (!measurement) {
       return next({
         statusCode: 404,
@@ -37,14 +40,7 @@ export async function addMeasurement(
       });
     }
 
-    emitSocketUpdate("measurement.created", {
-      id: measurement.id,
-      site_id: measurement.site_id,
-      measured_at: measurement.measured_at,
-      emission_value: measurement.emission_value,
-      unit: measurement.unit,
-      created_at: measurement.created_at,
-    });
+    emitSocketUpdate("measurement.created", measurement);
 
     res.status(201).json({ status: "success", data: measurement });
   } catch (err) {
@@ -77,13 +73,7 @@ export async function ingestBatchMeasurements(
 
     if (result.status === "created") {
       emitSocketUpdate("measurement.batch_ingested", {
-        batch_id: result.data.batch_id,
-        site_id: result.data.site_id,
-        client_batch_id: result.data.client_batch_id,
-        inserted_count: result.data.inserted_count,
-        total_emissions_to_date: result.data.total_emissions_to_date,
-        last_measurement_at: result.data.last_measurement_at,
-        current_compliance_status: result.data.current_compliance_status,
+        ...result.data,
       });
     }
 

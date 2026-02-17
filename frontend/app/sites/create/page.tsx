@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import ErrorDialog from "@/app/components/ui/ErrorDialog";
 import SuccessToast from "@/app/components/ui/SuccessToast";
 import { SiteApiService } from "@/app/lib/api/SiteApiService";
@@ -10,16 +10,21 @@ import {
   createSiteFormSchema,
   parseJsonObject,
 } from "@/app/lib/validation/schemas";
+import { type CreateSiteFormState } from "@/app/types/createSiteForm";
 
 const siteApi = new SiteApiService();
 
+const initialFormState: CreateSiteFormState = {
+  siteName: "",
+  siteType: "",
+  emissionLimit: "",
+  latitude: "",
+  longitude: "",
+  metadata: "",
+};
+
 export default function CreateSitePage() {
-  const [siteName, setSiteName] = useState("");
-  const [siteType, setSiteType] = useState("");
-  const [emissionLimit, setEmissionLimit] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
-  const [metadata, setMetadata] = useState("");
+  const [form, setForm] = useState<CreateSiteFormState>(initialFormState);
   const [loading, setLoading] = useState(false);
 
   const [errorOpen, setErrorOpen] = useState(false);
@@ -40,24 +45,29 @@ export default function CreateSitePage() {
   }, []);
 
   const resetForm = useCallback(() => {
-    setSiteName("");
-    setSiteType("");
-    setEmissionLimit("");
-    setLatitude("");
-    setLongitude("");
-    setMetadata("");
+    setForm(initialFormState);
   }, []);
+
+  const setFormField = useCallback(
+    <K extends keyof CreateSiteFormState>(
+      field: K,
+      value: CreateSiteFormState[K],
+    ) => {
+      setForm((previous) => ({ ...previous, [field]: value }));
+    },
+    [],
+  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const parsed = createSiteFormSchema.safeParse({
-      site_name: siteName,
-      site_type: siteType,
-      emission_limit: emissionLimit,
-      latitude,
-      longitude,
-      metadata,
+      site_name: form.siteName,
+      site_type: form.siteType,
+      emission_limit: form.emissionLimit,
+      latitude: form.latitude,
+      longitude: form.longitude,
+      metadata: form.metadata,
     });
 
     if (!parsed.success) {
@@ -126,8 +136,8 @@ export default function CreateSitePage() {
             <input
               type="text"
               className="w-full rounded border px-3 py-2"
-              value={siteName}
-              onChange={(event) => setSiteName(event.target.value)}
+              value={form.siteName}
+              onChange={(event) => setFormField("siteName", event.target.value)}
               maxLength={120}
               required
             />
@@ -141,8 +151,8 @@ export default function CreateSitePage() {
             <input
               type="text"
               className="w-full rounded border px-3 py-2"
-              value={siteType}
-              onChange={(event) => setSiteType(event.target.value)}
+              value={form.siteType}
+              onChange={(event) => setFormField("siteType", event.target.value)}
               maxLength={80}
               placeholder="well_pad, compressor_station, plant..."
               required
@@ -157,8 +167,10 @@ export default function CreateSitePage() {
             <input
               type="number"
               className="w-full rounded border px-3 py-2"
-              value={emissionLimit}
-              onChange={(event) => setEmissionLimit(event.target.value)}
+              value={form.emissionLimit}
+              onChange={(event) =>
+                setFormField("emissionLimit", event.target.value)
+              }
               required
               min={0.000001}
               step="0.000001"
@@ -173,8 +185,10 @@ export default function CreateSitePage() {
               <input
                 type="number"
                 className="w-full rounded border px-3 py-2"
-                value={latitude}
-                onChange={(event) => setLatitude(event.target.value)}
+                value={form.latitude}
+                onChange={(event) =>
+                  setFormField("latitude", event.target.value)
+                }
                 step="0.0000001"
                 min={-90}
                 max={90}
@@ -188,8 +202,10 @@ export default function CreateSitePage() {
               <input
                 type="number"
                 className="w-full rounded border px-3 py-2"
-                value={longitude}
-                onChange={(event) => setLongitude(event.target.value)}
+                value={form.longitude}
+                onChange={(event) =>
+                  setFormField("longitude", event.target.value)
+                }
                 step="0.0000001"
                 min={-180}
                 max={180}
@@ -204,8 +220,8 @@ export default function CreateSitePage() {
             </label>
             <textarea
               className="w-full rounded border px-3 py-2"
-              value={metadata}
-              onChange={(event) => setMetadata(event.target.value)}
+              value={form.metadata}
+              onChange={(event) => setFormField("metadata", event.target.value)}
               rows={4}
               placeholder='{"owner":"Ops Team North"}'
             />

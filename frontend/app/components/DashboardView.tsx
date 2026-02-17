@@ -114,27 +114,50 @@ export default function DashboardView() {
 
   useEffect(() => {
     const unsubscribeSiteCreated = realtimeClient.onSiteCreated((payload) => {
-      const siteExists = sitesRef.current.some(
-        (site) => site.id === payload.id,
-      );
+      setSites((current) => {
+        const siteExists = sitesRef.current.some(
+          (site) => site.id === payload.id,
+        );
 
-      if (siteExists) {
-        return;
-      }
+        if (siteExists) {
+          return current;
+        }
 
-      loadSites();
+        return [payload as Site, ...current];
+      });
+
       openSuccessToast(LABELS.messages.siteListUpdatedRealtime);
     });
 
     const unsubscribeMeasurementCreated = realtimeClient.onMeasurementCreated(
       (payload) => {
-        const parentSiteExists = sitesRef.current.some(
+        const parentSite = sitesRef.current.find(
           (site) => site.id === payload.site_id,
         );
 
-        if (!parentSiteExists) {
+        if (!parentSite) {
           return;
         }
+
+        setSites((current) =>
+          current.map((site) => {
+            if (site.id !== payload.site_id) {
+              return site;
+            }
+
+            const emissionValue = Number(payload.emission_value);
+            const emissionDelta = Number.isFinite(emissionValue)
+              ? emissionValue
+              : 0;
+
+            return {
+              ...site,
+              total_emissions_to_date:
+                site.total_emissions_to_date + emissionDelta,
+              last_measurement_at: payload.site.last_measurement_at,
+            };
+          }),
+        );
 
         const isSelectedSite =
           selectedSiteIdRef.current &&
@@ -165,16 +188,53 @@ export default function DashboardView() {
             ];
           });
         }
-
-        loadSites();
       },
     );
+
+    const unsubscribeMeasurementBatchIngested =
+      realtimeClient.onMeasurementBatchIngested((payload) => {
+        const parentSiteExists = sitesRef.current.some(
+          (site) => site.id === payload.site_id,
+        );
+
+        if (!parentSiteExists) {
+          return;
+        }
+
+        setSites((current) =>
+          current.map((site) => {
+            if (site.id !== payload.site_id) {
+              return site;
+            }
+
+            const totalEmissionsToDate = Number(payload.total_emissions_to_date);
+
+            return {
+              ...site,
+              total_emissions_to_date: Number.isFinite(totalEmissionsToDate)
+                ? totalEmissionsToDate
+                : site.total_emissions_to_date,
+              last_measurement_at: payload.last_measurement_at,
+              current_compliance_status:
+                payload.current_compliance_status as Site["current_compliance_status"],
+            };
+          }),
+        );
+
+        if (
+          selectedSiteIdRef.current === payload.site_id &&
+          payload.measurements
+        ) {
+          setSelectedSiteMeasurements(payload.measurements);
+        }
+      });
 
     return () => {
       unsubscribeSiteCreated();
       unsubscribeMeasurementCreated();
+      unsubscribeMeasurementBatchIngested();
     };
-  }, [loadSites, openSuccessToast]);
+  }, [openSuccessToast]);
 
   const selectSiteForMeasurement = useCallback(
     async (siteId: number) => {

@@ -50,12 +50,7 @@ export async function createSite(
 ) {
   try {
     const site = await SiteService.createSite(req.body);
-    emitSocketUpdate("site.created", {
-      id: site.id,
-      site_name: site.site_name,
-      site_type: site.site_type,
-      created_at: site.created_at,
-    });
+    emitSocketUpdate("site.created", site);
     res.status(201).json({ status: "success", data: site });
   } catch (err) {
     next(err);

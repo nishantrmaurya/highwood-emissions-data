@@ -1,3 +1,4 @@
+import { Measurement, Site } from "@/app/types/schema";
 import { io, type Socket } from "socket.io-client";
 
 const API_SOCKET_URL = "http://localhost:3000";
@@ -16,6 +17,18 @@ type MeasurementCreatedPayload = {
   emission_value: number | string;
   unit: string;
   created_at: string;
+  site: Site;
+};
+
+type MeasurementBatchIngestedPayload = {
+  batch_id: number;
+  site_id: number;
+  client_batch_id: string;
+  inserted_count: number;
+  total_emissions_to_date: number | string;
+  last_measurement_at: string | null;
+  current_compliance_status: string;
+  measurements?: Measurement[];
 };
 
 export class RealtimeClient {
@@ -59,6 +72,17 @@ export class RealtimeClient {
 
     return () => {
       socket.off("measurement.created", handler);
+    };
+  }
+
+  onMeasurementBatchIngested(
+    handler: (payload: MeasurementBatchIngestedPayload) => void,
+  ): () => void {
+    const socket = this.connect();
+    socket.on("measurement.batch_ingested", handler);
+
+    return () => {
+      socket.off("measurement.batch_ingested", handler);
     };
   }
 }

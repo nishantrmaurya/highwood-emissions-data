@@ -1,4 +1,4 @@
-import { Prisma } from "../config/prisma/generated/client.js";
+import { measurement, Prisma } from "../config/prisma/generated/client.js";
 
 export type BatchIngestionPayload = {
   batch_id: number;
@@ -9,6 +9,7 @@ export type BatchIngestionPayload = {
   total_emissions_to_date: Prisma.Decimal;
   last_measurement_at: Date | null;
   current_compliance_status: string;
+  measurements: measurement[];
 };
 
 export type IngestBatchResult =
