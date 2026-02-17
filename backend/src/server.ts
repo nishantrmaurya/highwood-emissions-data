@@ -41,10 +41,9 @@ app.get("/health", (req: Request, res: Response) => {
     .json({ status: "ok", message: "Highwood Emissions Data API is healthy" });
 });
 
-app.use(errorHandler);
-
 async function startServer() {
   await loadRouters(routesPath);
+  app.use(errorHandler);
 
   const httpServer = createServer(app);
   initSocketServer(httpServer);
