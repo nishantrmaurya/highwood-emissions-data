@@ -17,6 +17,57 @@ services:
       timeout: 3s
       retries: 20
 
+  backend:
+    image: node:22-alpine
+    container_name: emissions_backend
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      NODE_ENV: docker
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-emissions}:${POSTGRES_PASSWORD:-emissions}@postgres:5432/${POSTGRES_DB:-emissions}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    command: >
+      sh -c "
+      if [ ! -f node_modules/.bin/tsc ]; then npm ci; fi &&
+      echo \"PORT=$$PORT\" > .env.docker &&
+      echo \"DATABASE_URL=$$DATABASE_URL\" >> .env.docker &&
+      npm run prisma:generate &&
+      npm run build &&
+      npm run prisma:migrate:deploy &&
+      NODE_ENV=docker node dist/server.js
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    container_name: emissions_frontend
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      NODE_ENV: docker
+      BACKEND_API_URL: http://backend:3000
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: >
+      sh -c "
+      if [ ! -f node_modules/.bin/next ]; then npm ci; fi &&
+      npm run build &&
+      npm run start -- --hostname 0.0.0.0
+      "
+    depends_on:
+      backend:
+        condition: service_started
+
   # Optional: candidates can choose to use it for idempotency keys, caching, etc.
   redis:
     image: redis:7-alpine
@@ -49,3 +100,5 @@ services:
 
 volumes:
   emissions_pg_data:
+  backend_node_modules:
+  frontend_node_modules:
