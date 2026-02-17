@@ -1,5 +1,8 @@
 # Highwood Emissions Data Platform
 
+Live application: https://highwood-emissions-data.vercel.app/
+(Socket updates are not working on the live version. Running it locally will work fine)
+
 Full-stack emissions ingestion and analytics application built with:
 
 - Backend: Node.js + Express + Prisma + PostgreSQL + Socket.IO
