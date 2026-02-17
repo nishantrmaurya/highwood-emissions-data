@@ -15,6 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app: Application = express();
 const PORT: number = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const API_PREFIX = process.env.NODE_ENV === "prod" ? "/api" : "";
 
 app.use(express.json());
 
@@ -30,7 +31,11 @@ async function loadRouters(dir: string) {
       const routerModule = await import(fullPath);
       const router = routerModule.default || routerModule;
       if (typeof router === "function") {
-        app.use(router);
+        if (API_PREFIX) {
+          app.use(API_PREFIX, router);
+        } else {
+          app.use(router);
+        }
       }
     }
   }
@@ -40,6 +45,14 @@ app.get("/health", (req: Request, res: Response) => {
     .status(200)
     .json({ status: "ok", message: "Highwood Emissions Data API is healthy" });
 });
+
+if (API_PREFIX) {
+  app.get(`${API_PREFIX}/health`, (req: Request, res: Response) => {
+    res
+      .status(200)
+      .json({ status: "ok", message: "Highwood Emissions Data API is healthy" });
+  });
+}
 
 async function startServer() {
   await loadRouters(routesPath);
