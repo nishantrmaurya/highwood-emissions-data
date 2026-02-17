@@ -37,14 +37,6 @@ export default function SiteDetailsSection({ site }: SiteDetailsSectionProps) {
           {site.total_emissions_to_date.toFixed(6)}
         </p>
         <p>
-          <strong>{LABELS.headers.rolling24hEmissions}:</strong>{" "}
-          {site.rolling_24h_emissions?.toFixed(6) ?? UI_LABELS.common.nullValue}
-        </p>
-        <p>
-          <strong>{LABELS.headers.rolling30dEmissions}:</strong>{" "}
-          {site.rolling_30d_emissions?.toFixed(6) ?? UI_LABELS.common.nullValue}
-        </p>
-        <p>
           <strong>{LABELS.headers.latitude}:</strong>{" "}
           {site.latitude ?? UI_LABELS.common.nullValue}
         </p>

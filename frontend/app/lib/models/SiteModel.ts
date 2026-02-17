@@ -1,10 +1,11 @@
 import type { Site } from "@/app/types/schema";
 
-type SiteApiRecord = Omit<Site, "emission_limit" | "total_emissions_to_date" | "rolling_24h_emissions" | "rolling_30d_emissions" | "latitude" | "longitude"> & {
+type SiteApiRecord = Omit<
+  Site,
+  "emission_limit" | "total_emissions_to_date" | "latitude" | "longitude"
+> & {
   emission_limit: number | string;
   total_emissions_to_date: number | string;
-  rolling_24h_emissions: number | string | null;
-  rolling_30d_emissions: number | string | null;
   latitude: number | string | null;
   longitude: number | string | null;
 };
@@ -24,8 +25,6 @@ export class SiteModel {
       ...data,
       emission_limit: Number(data.emission_limit),
       total_emissions_to_date: Number(data.total_emissions_to_date),
-      rolling_24h_emissions: toNumber(data.rolling_24h_emissions),
-      rolling_30d_emissions: toNumber(data.rolling_30d_emissions),
       latitude: toNumber(data.latitude),
       longitude: toNumber(data.longitude),
     };

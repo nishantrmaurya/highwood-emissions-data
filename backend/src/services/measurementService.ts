@@ -16,6 +16,7 @@ export class MeasurementService {
     return prismaClient.measurement.findMany({
       orderBy: {
         measured_at: "desc",
+        id: "asc",
       },
       take: 100,
     });

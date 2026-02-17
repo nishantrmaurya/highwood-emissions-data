@@ -22,8 +22,6 @@ CREATE TABLE "site" (
     "total_emissions_to_date" DECIMAL(18,6) NOT NULL DEFAULT 0,
     "metadata" JSONB,
     "last_measurement_at" TIMESTAMP(3),
-    "rolling_24h_emissions" DECIMAL(18,6),
-    "rolling_30d_emissions" DECIMAL(18,6),
     "current_compliance_status" "compliance_status" NOT NULL DEFAULT 'unknown',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
