@@ -35,5 +35,9 @@ export function getSocketServer(): Server {
 }
 
 export function emitSocketUpdate<T>(event: string, payload: T): void {
-  getSocketServer().emit(event, payload);
+  if (!io) {
+    return;
+  }
+
+  io.emit(event, payload);
 }
