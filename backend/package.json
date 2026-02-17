@@ -12,13 +12,18 @@
     "prisma:migrate:dev": "NODE_ENV=dev && prisma migrate dev",
     "prisma:migrate:deploy": "NODE_ENV=dev && prisma migrate deploy",
     "prisma:migrate:reset": "NODE_ENV=dev && prisma migrate reset --force",
-    "prisma:migrate:status": "prisma migrate status --schema=./prisma/schema.prisma"
+    "prisma:migrate:status": "prisma migrate status --schema=./prisma/schema.prisma",
+    "prisma:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "node --loader ts-node/esm src/scripts/seed.ts"
   },
   "keywords": [],
   "author": "Nishant Maurya",
   "license": "ISC",
   "description": "Backend for Highwood Emissions Ingestion & Analytics Engine",
   "dependencies": {
+    "@faker-js/faker": "10.3.0",
     "@prisma/adapter-pg": "7.4.0",
     "@prisma/client": "7.4.0",
     "dotenv": "17.3.1",
