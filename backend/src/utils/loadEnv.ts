@@ -25,11 +25,9 @@ export function loadEnv(): void {
   );
 
   if (!envFilePath) {
-    throw new Error(
-      `No env file found for NODE_ENV=${process.env.NODE_ENV}. Checked: ${candidatePaths.join(
-        ", ",
-      )}`,
-    );
+    // In managed runtimes (Render, etc.), env vars are injected directly.
+    // If no env file exists, continue and use process.env as-is.
+    return;
   }
 
   const result = dotenv.config({ path: envFilePath });
