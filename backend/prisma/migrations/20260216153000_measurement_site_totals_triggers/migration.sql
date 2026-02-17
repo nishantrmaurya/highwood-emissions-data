@@ -8,8 +8,6 @@ RETURNS NUMERIC
 LANGUAGE plpgsql
 STABLE
 AS $$
-DECLARE
-  v_factor NUMERIC;
 BEGIN
   CASE p_unit
     WHEN 'kg' THEN
@@ -17,33 +15,9 @@ BEGIN
     WHEN 'tonne' THEN
       RETURN p_value * 1000;
     WHEN 'scf' THEN
-      SELECT NULLIF(metadata->>'scf_to_kg_factor', '')::NUMERIC
-      INTO v_factor
-      FROM site
-      WHERE id = p_site_id;
-
-      IF v_factor IS NULL THEN
-        RAISE EXCEPTION
-          'Missing deterministic conversion factor metadata.scf_to_kg_factor for site_id %',
-          p_site_id
-          USING ERRCODE = '22023';
-      END IF;
-
-      RETURN p_value * v_factor;
+      RETURN p_value * 0.0192::NUMERIC;
     WHEN 'ppm' THEN
-      SELECT NULLIF(metadata->>'ppm_to_kg_factor', '')::NUMERIC
-      INTO v_factor
-      FROM site
-      WHERE id = p_site_id;
-
-      IF v_factor IS NULL THEN
-        RAISE EXCEPTION
-          'Missing deterministic conversion factor metadata.ppm_to_kg_factor for site_id %',
-          p_site_id
-          USING ERRCODE = '22023';
-      END IF;
-
-      RETURN p_value * v_factor;
+      RETURN p_value * 0.000001::NUMERIC;
     ELSE
       RAISE EXCEPTION 'Unsupported emission unit % for site_id %', p_unit, p_site_id;
   END CASE;
@@ -194,7 +168,17 @@ FOR EACH STATEMENT
 EXECUTE FUNCTION trg_measurement_after_update_sync_site_totals();
 
 -- Backfill totals and last measurement timestamp for existing data.
-WITH site_aggregates AS (
+WITH unit_conversion_factors AS (
+  SELECT *
+  FROM (
+    VALUES
+      ('kg'::emission_unit, 1::NUMERIC),
+      ('tonne'::emission_unit, 1000::NUMERIC),
+      ('scf'::emission_unit, 0.0192::NUMERIC),
+      ('ppm'::emission_unit, 0.000001::NUMERIC)
+  ) AS v(unit, factor_to_kg)
+),
+site_aggregates AS (
   SELECT
     s.id AS site_id,
     ROUND(
@@ -202,7 +186,7 @@ WITH site_aggregates AS (
         SUM(
           CASE
             WHEN m.id IS NULL THEN 0
-            ELSE measurement_to_kg(m.emission_value, m.unit, m.site_id)
+            ELSE m.emission_value * u.factor_to_kg
           END
         ),
         0
@@ -212,6 +196,7 @@ WITH site_aggregates AS (
     MAX(m.measured_at) AS max_measured_at
   FROM site s
   LEFT JOIN measurement m ON m.site_id = s.id
+  LEFT JOIN unit_conversion_factors u ON u.unit = m.unit
   GROUP BY s.id
 )
 UPDATE site s
@@ -241,7 +226,17 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 AS $$
-WITH computed AS (
+WITH unit_conversion_factors AS (
+  SELECT *
+  FROM (
+    VALUES
+      ('kg'::emission_unit, 1::NUMERIC),
+      ('tonne'::emission_unit, 1000::NUMERIC),
+      ('scf'::emission_unit, 0.0192::NUMERIC),
+      ('ppm'::emission_unit, 0.000001::NUMERIC)
+  ) AS v(unit, factor_to_kg)
+),
+computed AS (
   SELECT
     s.id AS site_id,
     ROUND(
@@ -249,7 +244,7 @@ WITH computed AS (
         SUM(
           CASE
             WHEN m.id IS NULL THEN 0
-            ELSE measurement_to_kg(m.emission_value, m.unit, m.site_id)
+            ELSE m.emission_value * u.factor_to_kg
           END
         ),
         0
@@ -258,6 +253,7 @@ WITH computed AS (
     ) AS computed_total_kg
   FROM site s
   LEFT JOIN measurement m ON m.site_id = s.id
+  LEFT JOIN unit_conversion_factors u ON u.unit = m.unit
   GROUP BY s.id
 )
 SELECT
